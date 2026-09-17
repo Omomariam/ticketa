@@ -1,0 +1,14 @@
+{
+  "chainId": 968,
+  "name": "BOT Chain Testnet",
+  "rpcUrl": "https://rpc.bohr.life",
+  "explorerUrl": "https://scan.bohr.life",
+  "address": "0x1b2615E2f5596b70Dee522a8d558ddc3f284C10e",
+  "blockNumber": 23727304,
+  "transactionHash": "0xd752eda6dcd4c2529004b968f59e32f07e954dfe41f5d49cfdf553cc8153fc9d",
+  "deployer": "0x5245A561396ADbF2921488fEB81F99CF14963567",
+  "bytecodeHash": "0x7e21d90b3120317ce16106ec41c5bc2172c4a4351104d7cb83e7895a6e7f37d0",
+  "deployedAt": "2026-09-17T14:04:54.628Z",
+  "verified": true,
+  "verifiedAt": "2026-09-17T14:08:26.391Z"
+}

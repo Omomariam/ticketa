@@ -16,7 +16,7 @@ Open `http://localhost:5173`. Connect an EVM wallet and approve the switch to BO
 
 ## Contract deployment
 
-Deployed and verified on BOT Chain Testnet: [0x1b2615E2f5596b70Dee522a8d558ddc3f284C10e](https://scan.bohr.life/address/0x1b2615E2f5596b70Dee522a8d558ddc3f284C10e?tab=contract). Deployment transaction: [0xd752eda6dcd4c2529004b968f59e32f07e954dfe41f5d49cfdf553cc8153fc9d](https://scan.bohr.life/tx/0xd752eda6dcd4c2529004b968f59e32f07e954dfe41f5d49cfdf553cc8153fc9d).
+Deployed and verified on BOT Chain Testnet: [0x0d7cf9AB07C417f28d5B872F39eD83E78c73c89c](https://scan.bohr.life/address/0x0d7cf9AB07C417f28d5B872F39eD83E78c73c89c?tab=contract). Deployment transaction: [0x67c5a71f7c115bb736271637420423acea7ce10647f73d6ace9a5433e91eea4e](https://scan.bohr.life/tx/0x67c5a71f7c115bb736271637420423acea7ce10647f73d6ace9a5433e91eea4e).
 
 `.env` must contain `PRIVATE_KEY` and `BLOCKSCOUT_API_KEY`. Neither value uses a `VITE_` prefix and neither is included in the browser build. Only the server-side scripts read deployment credentials. `.env` is ignored by Git.
 
@@ -47,6 +47,8 @@ Ticket owners explicitly sign an EIP-712 `CheckIn` proof bound to the chain, con
 
 Check-in supports camera scanning, image upload, and pasting decoded QR contents. Camera access requires HTTPS in a hosted deployment (localhost is supported). A ticket number alone cannot authorize entry. Signed QR codes should be shown only to event staff; possession of a valid signed code allows staff to admit its holder.
 
+Ticket sales remain open before and during the event, until its end time (or until the tier sells out). The event page displays the sale deadline.
+
 Event dates and tier terms are fixed at publication. The organizer can edit descriptive event details before the start, manage staff access, and withdraw proceeds. The contract does not implement cancellations or refunds.
 
 ## Validation
@@ -68,3 +70,11 @@ Contract tests run only on an isolated local chain (1337 or 31337), never the pu
 Both the landing and app footer display **BOT Chain** with links to [botchain.ai](https://botchain.ai) and [scan.botchain.ai](https://scan.botchain.ai), plus the actual deployed testnet contract.
 
 References: [BOT Chain network configuration](https://dev-docs.botchain.ai/docs/Developers/quick-guide/), [Blockscout verification API](https://docs.blockscout.com/devs/verification/blockscout-smart-contract-verification-api), [OpenZeppelin ERC-721](https://docs.openzeppelin.com/contracts/5.x/erc721), [ethers providers](https://docs.ethers.org/v6/api/providers/).
+
+## Sales cutoff revision
+
+Version 2 references the original deployment at `0x1b2615E2f5596b70Dee522a8d558ddc3f284C10e`. The original contract closed purchases at the event start time; version 2 closes them at the end time. The real Sparks event was migrated using its organizer wallet, preserving its original start/end times, event details, and ticket tiers. It had no issued tickets. Original deployment source, ABI, compiler input, and configuration are archived under `deployments/0x1b2615E2f5596b70Dee522a8d558ddc3f284C10e/`.
+
+The restricted `importLegacyEvent` method accepts only the original event organizer, refuses events with issued tickets or an elapsed end time, and prevents duplicate imports. The one-time `scripts/upgrade-sales-testnet.mjs` script checks the exact original state, verifies the imported data and live purchase availability, and activates the new configuration only after those checks pass. No ticket purchase or mock data is created during migration.
+
+Redeploy the updated project on Vercel to publish the new address and cutoff logic. Use the same `npm run build` command, `dist` output directory, and no hosting environment variables.

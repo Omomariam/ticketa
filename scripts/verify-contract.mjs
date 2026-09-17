@@ -12,7 +12,7 @@ try {
  if(await isVerified())save();
  else {
   const p=params('verifysourcecode');
-  p.set('contractaddress',deployment.address);p.set('contractname','contracts/Ticketa.sol:Ticketa');p.set('codeformat','solidity-standard-json-input');p.set('sourceCode',fs.readFileSync('artifacts/standard-input.json','utf8'));p.set('compilerversion','v'+fs.readFileSync('artifacts/compiler-version.txt','utf8').split('.Emscripten')[0]);p.set('constructorArguments','');p.set('licenseType','3');
+  p.set('contractaddress',deployment.address);p.set('contractname','contracts/Ticketa.sol:Ticketa');p.set('codeformat','solidity-standard-json-input');p.set('sourceCode',fs.readFileSync('artifacts/standard-input.json','utf8'));p.set('compilerversion','v'+fs.readFileSync('artifacts/compiler-version.txt','utf8').split('.Emscripten')[0]);p.set('constructorArguments',deployment.constructorArguments||'');p.set('licenseType','3');
   const result=await request(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:p});
   if(result.status!=='1'){if(await isVerified())save();else throw Error('Explorer did not accept verification: '+String(result.result).slice(0,250))}
   else {

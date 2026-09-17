@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createServer} from 'vite';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
 import {loadEnv} from './env.mjs';
 const server=await createServer({server:{middlewareMode:true}});
 let chain;
@@ -12,6 +14,15 @@ try {
  assert.equal(await chain.contract.name(),'Ticketa');
  assert.equal(await chain.contract.symbol(),'TKT');
  const data=await chain.readSnapshot(deployment.deployer);
+ const sparks=data.events.find(e=>e.name==='Sparks');
+ if(sparks&&data.timestamp>=sparks.startsAt&&data.timestamp<sparks.endsAt&&sparks.tiers[0].minted<sparks.tiers[0].capacity){
+  const {EventDetails}=await server.ssrLoadModule('/src/pages/Events.jsx');
+  const html=renderToStaticMarkup(React.createElement(EventDetails,{event:sparks,data,address:deployment.deployer,busy:false}));
+  assert.equal(html.includes('Sales closed'),false,'An ongoing event must allow ticket purchases');
+  assert.equal(/<button[^>]*class="primary-button full"[^>]*>(Buy ticket|Claim ticket)/.test(html),true);
+  assert.equal(/<button[^>]*class="primary-button full"[^>]*disabled/.test(html),false);
+  console.log('Ongoing Sparks event renders an enabled purchase button using live contract data.');
+ }
  assert.equal(data.events.length,Number(await chain.contract.eventCount()));
  assert.equal(data.tickets.length,Number(await chain.contract.balanceOf(deployment.deployer)));
  const domain=await chain.contract.eip712Domain();assert.equal(Number(domain.chainId),968);assert.equal(domain.verifyingContract,deployment.address);

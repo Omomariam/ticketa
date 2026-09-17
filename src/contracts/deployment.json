@@ -3,12 +3,21 @@
   "name": "BOT Chain Testnet",
   "rpcUrl": "https://rpc.bohr.life",
   "explorerUrl": "https://scan.bohr.life",
-  "address": "0x1b2615E2f5596b70Dee522a8d558ddc3f284C10e",
-  "blockNumber": 23727304,
-  "transactionHash": "0xd752eda6dcd4c2529004b968f59e32f07e954dfe41f5d49cfdf553cc8153fc9d",
+  "address": "0x0d7cf9AB07C417f28d5B872F39eD83E78c73c89c",
+  "blockNumber": 23729909,
+  "transactionHash": "0x67c5a71f7c115bb736271637420423acea7ce10647f73d6ace9a5433e91eea4e",
   "deployer": "0x5245A561396ADbF2921488fEB81F99CF14963567",
-  "bytecodeHash": "0x7e21d90b3120317ce16106ec41c5bc2172c4a4351104d7cb83e7895a6e7f37d0",
-  "deployedAt": "2026-09-17T14:04:54.628Z",
+  "bytecodeHash": "0x6cab1f01423fe1a9cbcc73f80e97d3bbeda3be72cbd77876b14e3f7e1cc340bb",
+  "deployedAt": "2026-09-17T14:37:31.857Z",
   "verified": true,
-  "verifiedAt": "2026-09-17T14:08:26.391Z"
+  "previousAddress": "0x1b2615E2f5596b70Dee522a8d558ddc3f284C10e",
+  "constructorArguments": "0000000000000000000000001b2615e2f5596b70dee522a8d558ddc3f284c10e",
+  "version": 2,
+  "migrationTransactionHash": "0x82e7c7f6f94b69d3a5887294d8d26eebf16f1495107b09d29d475f2a4c9cdcf7",
+  "migratedEvent": {
+    "legacyId": 1,
+    "id": 1,
+    "name": "Sparks"
+  },
+  "verifiedAt": "2026-09-17T14:38:53.453Z"
 }

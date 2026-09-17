@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import {JsonRpcProvider,Wallet,ContractFactory,formatEther,keccak256} from 'ethers';
+import {JsonRpcProvider,Wallet,ContractFactory,formatEther,keccak256,ZeroAddress,AbiCoder} from 'ethers';
 import {loadEnv} from './env.mjs';
 const env=loadEnv();
 const provider=new JsonRpcProvider('https://rpc.bohr.life',undefined,{batchMaxCount:1});
@@ -18,20 +18,20 @@ try {
  }else await deploy();
  async function deploy(){
   const factory=new ContractFactory(artifact.abi,artifact.evm.bytecode.object,wallet);
-  const request=await factory.getDeployTransaction();
+  const request=await factory.getDeployTransaction(ZeroAddress);
   const gas=await provider.estimateGas({...request,from:wallet.address});
   const fees=await provider.getFeeData();
   const balance=await provider.getBalance(wallet.address);
   const estimate=gas*(fees.maxFeePerGas||fees.gasPrice);
   console.log('Testnet deployment estimated cost:',formatEther(estimate),'BOT');
   if(balance<estimate)throw Error('The deployer needs more testnet BOT for deployment.');
-  const contract=await factory.deploy({gasLimit:gas*120n/100n});
+  const contract=await factory.deploy(ZeroAddress,{gasLimit:gas*120n/100n});
   console.log('Deployment transaction:',contract.deploymentTransaction().hash);
   const receipt=await contract.deploymentTransaction().wait(2);
   if(!receipt||receipt.status!==1)throw Error('Deployment was not confirmed.');
   const address=await contract.getAddress();
   if(await provider.getCode(address)==='0x')throw Error('No contract code found after deployment.');
-  const data={chainId:968,name:'BOT Chain Testnet',rpcUrl:'https://rpc.bohr.life',explorerUrl:'https://scan.bohr.life',address,blockNumber:receipt.blockNumber,transactionHash:receipt.hash,deployer:wallet.address,bytecodeHash:keccak256('0x'+artifact.evm.bytecode.object),deployedAt:new Date().toISOString(),verified:false};
+  const data={chainId:968,name:'BOT Chain Testnet',rpcUrl:'https://rpc.bohr.life',explorerUrl:'https://scan.bohr.life',address,blockNumber:receipt.blockNumber,transactionHash:receipt.hash,deployer:wallet.address,bytecodeHash:keccak256('0x'+artifact.evm.bytecode.object),deployedAt:new Date().toISOString(),constructorArguments:AbiCoder.defaultAbiCoder().encode(['address'],[ZeroAddress]).slice(2),verified:false};
   fs.mkdirSync('src/contracts',{recursive:true});fs.writeFileSync(file,JSON.stringify(data,null,2)+'\n');
   console.log('Ticketa deployed:',address,'at block',receipt.blockNumber);
  }

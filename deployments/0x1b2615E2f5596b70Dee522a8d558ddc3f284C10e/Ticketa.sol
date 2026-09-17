@@ -18,8 +18,6 @@ contract Ticketa is ERC721Enumerable, ReentrancyGuard, EIP712 {
     bytes32 private constant CHECK_IN_TYPEHASH = keccak256("CheckIn(uint256 ticketId,uint256 nonce,uint256 deadline)");
     uint256 public eventCount;
     uint256 public ticketCount;
-    address public immutable legacyContract;
-    mapping(uint256 => uint256) public importedLegacyEvents;
     mapping(uint256 => EventInfo) private eventData;
     mapping(uint256 => Tier[]) private eventTiers;
     mapping(uint256 => TicketInfo) public ticketInfo;
@@ -30,30 +28,7 @@ contract Ticketa is ERC721Enumerable, ReentrancyGuard, EIP712 {
     event CheckedIn(uint256 indexed tokenId, uint256 indexed eventId, address indexed owner);
     event StaffUpdated(uint256 indexed eventId, address indexed staff, bool authorized);
     event ProceedsWithdrawn(uint256 indexed eventId, address indexed organizer, uint256 amount);
-    event LegacyEventImported(uint256 indexed legacyEventId, uint256 indexed eventId, address indexed organizer);
-    constructor(address legacy) ERC721("Ticketa", "TKT") EIP712("Ticketa", "1") {
-        require(legacy == address(0) || legacy.code.length > 0, "Invalid legacy contract");
-        legacyContract = legacy;
-    }
-
-    /// @notice Preserve an organizer's unissued event from the previous immutable deployment.
-    function importLegacyEvent(uint256 legacyEventId) external returns (uint256 id) {
-        require(legacyContract != address(0), "No legacy contract");
-        require(importedLegacyEvents[legacyEventId] == 0, "Event already imported");
-        EventView memory original = Ticketa(legacyContract).getEvent(legacyEventId);
-        require(original.info.organizer == msg.sender, "Organizer only");
-        require(original.info.sold == 0, "Legacy event has tickets");
-        require(original.info.details.endsAt > block.timestamp, "Event has ended");
-        id = ++eventCount;
-        importedLegacyEvents[legacyEventId] = id;
-        eventData[id] = EventInfo(id, msg.sender, original.info.details, 0, 0, 0);
-        for (uint256 i; i < original.tiers.length; ++i) {
-            require(original.tiers[i].minted == 0, "Legacy event has tickets");
-            eventTiers[id].push(original.tiers[i]);
-        }
-        emit EventCreated(id, msg.sender, original.info.details.name);
-        emit LegacyEventImported(legacyEventId, id, msg.sender);
-    }
+    constructor() ERC721("Ticketa", "TKT") EIP712("Ticketa", "1") {}
 
     function _validateDetails(EventDetails calldata details) private view {
         require(bytes(details.name).length > 0 && bytes(details.name).length <= 80, "Invalid event name");
@@ -106,7 +81,7 @@ contract Ticketa is ERC721Enumerable, ReentrancyGuard, EIP712 {
     }
     function purchase(uint256 eventId, uint256 tierId) external payable nonReentrant returns (uint256 tokenId) {
         EventInfo storage info=eventData[eventId];
-        require(info.organizer != address(0) && block.timestamp < info.details.endsAt, "Sales closed");
+        require(info.organizer != address(0) && block.timestamp < info.details.startsAt, "Sales closed");
         require(tierId < eventTiers[eventId].length, "Unknown tier");
         Tier storage tier=eventTiers[eventId][tierId];
         require(msg.value == tier.price, "Incorrect payment");

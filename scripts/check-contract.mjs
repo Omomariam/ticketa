@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {JsonRpcProvider,ContractFactory,parseEther,HDNodeWallet} from 'ethers';
+import {JsonRpcProvider,ContractFactory,parseEther,HDNodeWallet,ZeroAddress} from 'ethers';
 const provider=new JsonRpcProvider(process.env.TEST_RPC_URL||'http://127.0.0.1:8545',undefined,{cacheTimeout:0});
 try {
  const network=await provider.getNetwork();assert.ok([1337n,31337n].includes(network.chainId),'Tests require an isolated local chain');
@@ -10,11 +10,11 @@ try {
  const signingRecipient=HDNodeWallet.fromPhrase(phrase,undefined,"m/44'/60'/0'/0/2");
  assert.equal(signingRecipient.address,await recipient.getAddress(),'Start the local chain with the documented test mnemonic');
  const artifact=JSON.parse(fs.readFileSync('artifacts/Ticketa.json','utf8'));
- const contract=await new ContractFactory(artifact.abi,artifact.evm.bytecode.object,organizer).deploy();await contract.waitForDeployment();
+ const contract=await new ContractFactory(artifact.abi,artifact.evm.bytecode.object,organizer).deploy(ZeroAddress);await contract.waitForDeployment();
  const address=await contract.getAddress(),now=Number((await provider.getBlock('latest')).timestamp),price=parseEther('0.01');
  const details={name:'Contract test',venue:'Isolated local chain',description:'Test fixture only',category:'Other',imageUrl:'',startsAt:now+3600,endsAt:now+7200};
  await assert.rejects(contract.createEvent.staticCall({...details,startsAt:now-1},[{name:'General',price,capacity:2}]));
- await (await contract.createEvent(details,[{name:'General',price,capacity:2},{name:'VIP',price:price*2n,capacity:1}])).wait();
+ await (await contract.createEvent(details,[{name:'General',price,capacity:2},{name:'VIP',price:price*2n,capacity:1},{name:'Late entry',price:0,capacity:2}])).wait();
  assert.equal((await contract.getEvents(1,25)).length,1);
  await assert.rejects(contract.connect(buyer).purchase.staticCall(1,0,{value:1n}));
  await (await contract.connect(buyer).purchase(1,0,{value:price})).wait();
@@ -46,13 +46,39 @@ try {
  assert.equal((await contract.getFunction('getEvent')(1)).info.checkedIn,1n);
  await assert.rejects(contract.checkIn.staticCall(1,1,deadline,signature));
  await assert.rejects(contract.connect(recipient).transferFrom.staticCall(await recipient.getAddress(),await buyer.getAddress(),1));
+ await (await contract.connect(buyer).purchase(1,1,{value:price*2n})).wait();
+ assert.equal((await contract.getFunction('getEvent')(1)).info.sold,3n);
  await assert.rejects(contract.connect(buyer).purchase.staticCall(1,1,{value:price*2n}));
  await assert.rejects(contract.updateEvent.staticCall(1,'Changed','Local','Test','Other',''));
  await assert.rejects(contract.connect(buyer).withdraw.staticCall(1));
- assert.equal((await contract.getFunction('getEvent')(1)).info.proceeds,price*2n);
+ assert.equal((await contract.getFunction('getEvent')(1)).info.proceeds,price*4n);
  await (await contract.withdraw(1)).wait();assert.equal((await contract.getFunction('getEvent')(1)).info.proceeds,0n);
  const metadata=JSON.parse(Buffer.from((await contract.tokenURI(1)).split(',')[1],'base64').toString());assert.equal(metadata.name,'Ticketa Ticket #1');
  await rpcTime(601);assert.equal(await contract.proofIsValid(2,0,deadline,oldSignature),false);
- console.log('Contract checks passed: metadata, pagination, prices, capacity, ownership, transfer permissions, signed QR, transfer nonce, chain binding, staff access, check-in timing, duplicate use, sales closure, editing, and payouts.');
+ const currentTime=Number((await provider.getBlock('latest')).timestamp);await rpcTime(details.endsAt-currentTime);
+ await assert.rejects(contract.connect(buyer).purchase.staticCall(1,2,{value:0}),e=>e.reason==='Sales closed');
+ await assert.rejects(contract.connect(buyer).purchase.staticCall(1,1,{value:price*2n}));
+ await assert.rejects(contract.connect(buyer).purchase.staticCall(1,0,{value:price}));
+ const v1=JSON.parse(fs.readFileSync('deployments/0x1b2615E2f5596b70Dee522a8d558ddc3f284C10e/artifact.json','utf8'));
+ const legacy=await new ContractFactory(v1.abi,v1.evm.bytecode.object,organizer).deploy();await legacy.waitForDeployment();
+ const legacyTime=Number((await provider.getBlock('latest')).timestamp);
+ const legacyDetails={...details,name:'Migration test',startsAt:legacyTime+300,endsAt:legacyTime+1800};
+ await(await legacy.createEvent(legacyDetails,[{name:'Standard',price,capacity:5}])).wait();
+ const successor=await new ContractFactory(artifact.abi,artifact.evm.bytecode.object,organizer).deploy(await legacy.getAddress());await successor.waitForDeployment();
+ await assert.rejects(successor.connect(buyer).importLegacyEvent.staticCall(1));
+ await rpcTime(301);
+ await(await successor.importLegacyEvent(1)).wait();
+ const imported=await successor.getFunction('getEvent')(1),old=await legacy.getFunction('getEvent')(1);
+ assert.deepEqual([...imported.info.details],[...old.info.details]);assert.equal(imported.info.organizer,old.info.organizer);
+ assert.deepEqual(imported.tiers.map(t=>[...t]),old.tiers.map(t=>[...t]));
+ await assert.rejects(successor.importLegacyEvent.staticCall(1));
+ await assert.rejects(legacy.connect(buyer).purchase.staticCall(1,0,{value:price}));
+ await(await successor.connect(buyer).purchase(1,0,{value:price})).wait();
+ assert.equal(await successor.ownerOf(1),await buyer.getAddress());
+ const legacyTime2=Number((await provider.getBlock('latest')).timestamp);
+ await(await legacy.createEvent({...legacyDetails,name:'Issued ticket test',startsAt:legacyTime2+300,endsAt:legacyTime2+1800},[{name:'Standard',price,capacity:5}])).wait();
+ await(await legacy.connect(buyer).purchase(2,0,{value:price})).wait();
+ await assert.rejects(successor.importLegacyEvent.staticCall(2));
+ console.log('Contract checks passed, including ticket purchases during an event, closure at the end, exact legacy migration, organizer permissions, duplicate migration prevention, and refusal to migrate issued tickets.');
  async function rpcTime(seconds){await provider.send('evm_increaseTime',[seconds]);await provider.send('evm_mine',[])}
 }finally{provider.destroy()}
